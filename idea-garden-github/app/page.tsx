@@ -235,12 +235,7 @@ function IdeaCard({
         </div>
       </div>
 
-      <button
-        type="button"
-        className="title-input"
-        aria-label="Idea title"
-        onClick={() => onOpen(idea.id)}
-      >
+      <div className="title-input">
         {idea.pinned && (
           <Pin
             className="title-pin"
@@ -274,8 +269,14 @@ function IdeaCard({
             aria-label="Spark · quick completed idea"
           />
         )}
-        {idea.title || <span>What’s the idea?</span>}
-      </button>
+        <input
+          className="idea-title-field"
+          value={idea.title}
+          placeholder="What’s the idea?"
+          aria-label="Idea title"
+          onChange={(event) => onChange(idea.id, { title: event.target.value })}
+        />
+      </div>
       {idea.evergreen && (
         <div className="card-secondary-meta">
           <span className="evergreen-tag" aria-label="Evergreen">
