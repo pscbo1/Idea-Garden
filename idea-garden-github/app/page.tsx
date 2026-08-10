@@ -1306,7 +1306,7 @@ export default function Home() {
             className={`idea-tools ${activeTool ? "is-open" : ""}`}
           >
             <div className="collection-heading">
-              <strong>{query || hasActiveFilters ? "Filtered ideas" : "All Ideas"}</strong>
+              <strong>{query || hasActiveFilters ? "Filtered Ideas" : "All Ideas"}</strong>
             </div>
             {activeTool === "search" && (
               <div className="tool-panel">
@@ -1623,7 +1623,7 @@ export default function Home() {
         {accessDenied || (!loading && embedKey === null) ? (
           <div className="empty-state access-state">
             <GrowthMark status="seed" />
-            <strong>Private garden</strong>
+            <strong>Private Garden</strong>
             <span>Open this page with its private Notion link.</span>
           </div>
         ) : loading ? (
@@ -1632,7 +1632,7 @@ export default function Home() {
           view === "incubator" &&
           (query || hasActiveFilters) ? (
           <div className="empty-state search-empty">
-            <strong>No matching ideas</strong>
+            <strong>No Matching Ideas</strong>
             <span>Adjust your search or filters.</span>
             <button type="button" className="reset-view-button empty-reset" onClick={resetView}>
               Reset view
@@ -1646,13 +1646,13 @@ export default function Home() {
             aria-busy={creatingIdea}
           >
             <GrowthMark status="sprout" />
-            <strong>No ideas yet</strong>
-            <span>Add your first idea</span>
+            <strong>No Ideas Yet</strong>
+            <span>Add Your First Idea</span>
           </button>
         ) : visibleIdeas.length === 0 ? (
           <div className="empty-state garden-empty">
             <GrowthMark status="bloom" />
-            <strong>Nothing has completed yet</strong>
+            <strong>Nothing Has Completed Yet</strong>
             <span>Bloomed ideas and Sparks will appear here.</span>
           </div>
         ) : view === "garden" ? (
@@ -1737,7 +1737,7 @@ export default function Home() {
               The garden displays up to 10 plants and recent Sparks. Find all completed ideas here.
             </p>
             <div className="collection-mode-control">
-              <span className="collection-mode-label">Garden display</span>
+              <span className="collection-mode-label">Garden Display</span>
               <div
                 className="collection-mode-options"
                 role="group"
@@ -1808,7 +1808,7 @@ export default function Home() {
             ×
           </button>
           <p className="trash-kicker">TRASH</p>
-          <h2>Recently deleted</h2>
+          <h2>Recently Deleted</h2>
           {trashedIdeas.length > 0 && (
             <div className="trash-batch-bar">
               <label>
@@ -1866,7 +1866,7 @@ export default function Home() {
             </p>
           )}
           {trashedIdeas.length === 0 ? (
-            <p className="trash-empty">Trash is empty.</p>
+            <p className="trash-empty">Trash Is Empty.</p>
           ) : (
             <div className="trash-list">
               {trashedIdeas.map((idea) => (
