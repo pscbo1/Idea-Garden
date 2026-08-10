@@ -1306,7 +1306,7 @@ export default function Home() {
             className={`idea-tools ${activeTool ? "is-open" : ""}`}
           >
             <div className="collection-heading">
-              <strong>{query || hasActiveFilters ? "Filtered ideas" : "All ideas"}</strong>
+              <strong>{query || hasActiveFilters ? "Filtered ideas" : "All Ideas"}</strong>
             </div>
             {activeTool === "search" && (
               <div className="tool-panel">
