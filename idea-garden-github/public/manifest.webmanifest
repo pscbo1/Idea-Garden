@@ -1,0 +1,17 @@
+{
+  "name": "Idea Garden Test",
+  "short_name": "Idea Garden",
+  "description": "A private, browser-local space for capturing and growing ideas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f5f2",
+  "theme_color": "#dfeee3",
+  "icons": [
+    {
+      "src": "/assets/plants/plant-0.png",
+      "sizes": "341x350",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
