@@ -7,12 +7,14 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Archive,
   BookOpen,
   Copy,
   Download,
   Flower2,
   ListFilter,
   Maximize2,
+  MoreHorizontal,
   Plus,
   Search,
   Sparkles,
@@ -20,6 +22,7 @@ import {
   Upload,
   Leaf,
   Pin,
+  RotateCcw,
   X,
 } from "lucide-react";
 
@@ -64,7 +67,6 @@ const localGardenStorageKey = "idea-garden-fast-test:v1";
 const progressStatuses: IdeaStatus[] = ["seed", "sprout"];
 const completionStatuses: IdeaStatus[] = ["spark", "bloom"];
 const filterStatusesInOrder: IdeaStatus[] = [
-  "archived",
   "seed",
   "sprout",
   "spark",
@@ -292,6 +294,7 @@ function IdeaCard({
         aria-label="Idea notes"
         onChange={(event) => onChange(idea.id, { content: event.target.value })}
       />
+      <div className="card-action-group">
       <button
         className="open-idea-button"
         type="button"
@@ -310,6 +313,7 @@ function IdeaCard({
       >
         <Trash2 size={14} strokeWidth={1.7} aria-hidden="true" />
       </button>
+      </div>
     </article>
   );
 }
@@ -699,7 +703,7 @@ export default function Home() {
   const accessDenied = false;
   const savingIds = new Set<number>();
   const saveFailedIds = new Set<number>();
-  const [view, setView] = useState<"incubator" | "garden">("incubator");
+  const [view, setView] = useState<"incubator" | "garden" | "archive">("incubator");
   const [collectionOpen, setCollectionOpen] = useState(false);
   const [gardenDisplayMode, setGardenDisplayMode] = useState<"latest" | "custom">(
     "latest",
@@ -718,6 +722,8 @@ export default function Home() {
   const [activeTool, setActiveTool] = useState<
     "search" | "filter" | "sort" | "trash" | null
   >(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [archiveQuery, setArchiveQuery] = useState("");
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(
     null,
   );
@@ -767,6 +773,10 @@ export default function Home() {
         setCollectionOpen(false);
         return;
       }
+      if (moreOpen) {
+        setMoreOpen(false);
+        return;
+      }
       if (activeTool && activeTool !== "trash") {
         setActiveTool(null);
         return;
@@ -792,7 +802,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [activeTool, collectionOpen, query, selectedIdeaId, sortDirection, sortField]);
+  }, [activeTool, collectionOpen, moreOpen, query, selectedIdeaId, sortDirection, sortField]);
 
   useEffect(() => {
     if (!activeTool || activeTool === "trash") return;
@@ -1011,6 +1021,24 @@ export default function Home() {
     }
   };
 
+  const restoreArchivedIdea = (id: number) => {
+    setIdeas((current) =>
+      current.map((idea) =>
+        idea.id === id
+          ? { ...idea, status: "seed", updatedAt: new Date().toISOString() }
+          : idea,
+      ),
+    );
+  };
+
+  const archiveToTrash = (id: number) => {
+    const currentIdea = ideas.find((idea) => idea.id === id);
+    if (!currentIdea) return;
+    const idea = { ...currentIdea, deletedAt: new Date().toISOString() };
+    setIdeas((current) => current.filter((item) => item.id !== id));
+    setTrashedIdeas((current) => [idea, ...current.filter((item) => item.id !== id)]);
+  };
+
   const exportGarden = () => {
     const snapshot: GardenSnapshot = {
       version: 1,
@@ -1089,6 +1117,7 @@ export default function Home() {
   };
   const workspaceIdeas = ideas
     .filter((idea) => {
+      if (idea.status === "archived") return false;
       if (
         filterCategories.size > 0 &&
         !filterCategories.has(idea.category.trim() || "Uncategorized")
@@ -1186,6 +1215,16 @@ export default function Home() {
     });
   const visibleIdeas =
     view === "garden" ? [...gardenPlants, ...gardenSparks] : workspaceIdeas;
+  const archivedIdeas = ideas
+    .filter((idea) => idea.status === "archived")
+    .filter((idea) => {
+      const normalized = archiveQuery.trim().toLocaleLowerCase();
+      if (!normalized) return true;
+      return [idea.title, idea.content, idea.category].some((value) =>
+        value.toLocaleLowerCase().includes(normalized),
+      );
+    })
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
   const toggleGardenDisplay = (idea: Idea) => {
     if (
       gardenDisplayMode !== "custom" ||
@@ -1289,9 +1328,39 @@ export default function Home() {
               disabled={creatingIdea}
               aria-busy={creatingIdea}
             >
+              <Plus size={16} strokeWidth={2} aria-hidden="true" />
               <span>＋</span> New Idea
             </button>
           )}
+          <div className="more-menu-wrap">
+            <button
+              type="button"
+              className={`more-button${moreOpen ? " active" : ""}`}
+              aria-label="More"
+              aria-expanded={moreOpen}
+              title="More"
+              onClick={() => setMoreOpen((current) => !current)}
+            >
+              <MoreHorizontal size={18} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            {moreOpen && (
+              <div className="more-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setView("archive");
+                    setMoreOpen(false);
+                    setActiveTool(null);
+                  }}
+                >
+                  <Archive size={16} strokeWidth={1.8} aria-hidden="true" />
+                  Archive
+                  <span className="more-menu-count">{ideas.filter((idea) => idea.status === "archived").length}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1620,7 +1689,57 @@ export default function Home() {
             </button>
           </div>
         )}
-        {accessDenied || (!loading && embedKey === null) ? (
+        {view === "archive" ? (
+          <section className="archive-page" aria-label="Archive">
+            <div className="archive-header">
+              <div>
+                <p className="archive-kicker">ARCHIVE</p>
+                <h2>Archived Ideas</h2>
+                <p>Ideas here are kept safely, but removed from the active workspace.</p>
+              </div>
+              <label className="archive-search">
+                <Search size={16} strokeWidth={1.8} aria-hidden="true" />
+                <input
+                  type="search"
+                  value={archiveQuery}
+                  placeholder="Search archive"
+                  aria-label="Search archive"
+                  onChange={(event) => setArchiveQuery(event.target.value)}
+                />
+              </label>
+            </div>
+            {archivedIdeas.length === 0 ? (
+              <div className="archive-empty">Archive Is Empty.</div>
+            ) : (
+              <div className="archive-list">
+                {archivedIdeas.map((idea) => (
+                  <article className="archive-item" key={idea.id}>
+                    <div className="archive-item-copy">
+                      <span className="archive-category">{idea.category || "Uncategorized"}</span>
+                      <input
+                        className="archive-title"
+                        value={idea.title}
+                        aria-label="Archived idea title"
+                        onChange={(event) => updateIdea(idea.id, { title: event.target.value })}
+                      />
+                      <p>{idea.content || "No notes yet."}</p>
+                    </div>
+                    <div className="archive-item-actions">
+                      <button type="button" onClick={() => restoreArchivedIdea(idea.id)} title="Restore idea">
+                        <RotateCcw size={15} strokeWidth={1.8} aria-hidden="true" />
+                        Restore
+                      </button>
+                      <button type="button" onClick={() => archiveToTrash(idea.id)} title="Move to trash">
+                        <Trash2 size={15} strokeWidth={1.8} aria-hidden="true" />
+                        Trash
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : accessDenied || (!loading && embedKey === null) ? (
           <div className="empty-state access-state">
             <GrowthMark status="seed" />
             <strong>Private Garden</strong>
