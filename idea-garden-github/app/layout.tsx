@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Idea Garden Test",
   description: "Capture, develop, and grow ideas in this browser.",
   manifest: "/manifest.webmanifest",
-  themeColor: "#dfeee3",
   other: {
     "codex-preview": "development",
   },
@@ -14,6 +13,10 @@ export const metadata: Metadata = {
     shortcut: "/assets/plants/plant-0.png",
     apple: "/assets/plants/plant-0.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#dfeee3",
 };
 
 export default function RootLayout({
