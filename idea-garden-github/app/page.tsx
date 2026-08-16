@@ -1170,10 +1170,13 @@ export default function Home() {
     (idea) =>
       idea.status === "bloom" &&
       !idea.evergreen &&
-      idea.gardenSlot !== null,
+      idea.gardenSlot !== null &&
+      idea.gardenSlot > 0,
   );
   const gardenPlants =
-    gardenDisplayMode === "custom" ? manualGardenPlants : automaticGardenPlants;
+    gardenDisplayMode === "custom" && hasManualGarden
+      ? manualGardenPlants
+      : automaticGardenPlants;
 
   useEffect(() => {
     if (loading || !embedKey) return;
@@ -1182,7 +1185,7 @@ export default function Home() {
     // Preserve an existing curated garden when this preference is first introduced.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setGardenDisplayMode(
-      storedMode === "latest" || storedMode === "custom"
+      storedMode === "latest" || (storedMode === "custom" && hasManualGarden)
         ? storedMode
         : hasManualGarden
           ? "custom"
