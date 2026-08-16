@@ -1729,7 +1729,7 @@ h1 {
   padding: 3px 6px;
   border: 1px solid rgba(79, 96, 57, 0.1);
   border-radius: 6px;
-  background: #F2F3E8;
+  background: rgba(242, 243, 232, 0.84);
   box-shadow: 0 1px 0 rgba(72, 82, 48, 0.08);
   text-align: center;
   transition: background 140ms ease, border-color 140ms ease;
