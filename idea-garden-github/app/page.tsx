@@ -23,12 +23,20 @@ import {
   Leaf,
   Pin,
   RotateCcw,
+  ExternalLink,
   X,
 } from "lucide-react";
 
 type IdeaStatus = "seed" | "sprout" | "bloom" | "spark" | "archived";
 type SortField = "updated" | "created" | "category" | "status";
 type SortDirection = "asc" | "desc";
+
+type Output = {
+  id: number;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type Idea = {
   id: number;
@@ -43,6 +51,7 @@ type Idea = {
   sparkedAt: string | null;
   gardenSlot: number | null;
   deletedAt: string | null;
+  outputs: Output[];
   createdAt: string;
   updatedAt: string;
 };
@@ -108,6 +117,36 @@ function GrowthMark({ status }: { status: IdeaStatus }) {
         <b />
       </span>
     </span>
+  );
+}
+
+function outputCount(idea: Idea) {
+  return Array.isArray(idea.outputs) ? idea.outputs.length : 0;
+}
+
+function FruitMark({ count, onClick }: { count: number; onClick: () => void }) {
+  if (count < 1) return null;
+  return (
+    <button
+      type="button"
+      className="fruit-mark"
+      aria-label={`Open ${count} output${count === 1 ? "" : "s"}`}
+      title={`${count} output${count === 1 ? "" : "s"}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+    >
+      <span className="fruit-cluster" aria-hidden="true">
+        {Array.from({ length: Math.min(count, 4) }, (_, index) => (
+          <i
+            key={index}
+            className={`fruit-image fruit-image-${index}`}
+          />
+        ))}
+      </span>
+      <span className="fruit-count">{count}</span>
+    </button>
   );
 }
 
@@ -180,12 +219,14 @@ function IdeaCard({
   onChange,
   onTrash,
   onOpen,
+  onOpenOutputs,
 }: {
   idea: Idea;
   categoryOptions: string[];
   onChange: (id: number, patch: Partial<Idea>) => void;
   onTrash: (id: number) => void;
   onOpen: (id: number) => void;
+  onOpenOutputs: (id: number) => void;
 }) {
   const [statusPulse, setStatusPulse] = useState(0);
   const categoryTone = colorFor(idea.category);
@@ -278,6 +319,7 @@ function IdeaCard({
           aria-label="Idea title"
           onChange={(event) => onChange(idea.id, { title: event.target.value })}
         />
+        <FruitMark count={outputCount(idea)} onClick={() => onOpenOutputs(idea.id)} />
       </div>
       {idea.evergreen && (
         <div className="card-secondary-meta">
@@ -323,11 +365,17 @@ function IdeaDetail({
   categoryOptions,
   onClose,
   onChange,
+  onAddOutput,
+  onUpdateOutput,
+  onDeleteOutput,
 }: {
   idea: Idea;
   categoryOptions: string[];
   onClose: () => void;
   onChange: (id: number, patch: Partial<Idea>) => void;
+  onAddOutput: (ideaId: number) => void;
+  onUpdateOutput: (ideaId: number, outputId: number, note: string) => void;
+  onDeleteOutput: (ideaId: number, outputId: number) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -503,8 +551,121 @@ function IdeaDetail({
             />
           )}
         </section>
+        <section className="idea-outputs" aria-label="Outputs">
+          <div className="full-note-heading">
+            <span>Outputs {outputCount(idea) > 0 ? `(${outputCount(idea)})` : ""}</span>
+            <button type="button" className="add-output-button" onClick={() => onAddOutput(idea.id)}>
+              <Plus size={14} aria-hidden="true" /> Add output
+            </button>
+          </div>
+          {outputCount(idea) === 0 ? (
+            <p className="outputs-empty">Small results count too. Add one when this idea produces something.</p>
+          ) : (
+            <div className="output-list">
+              {idea.outputs.map((output, index) => (
+                <div className="output-item" key={output.id}>
+                  <span className="output-fruit" aria-hidden="true">●</span>
+                  <textarea
+                    value={output.note}
+                    placeholder={`Output ${index + 1}`}
+                    aria-label={`Output ${index + 1}`}
+                    onChange={(event) => onUpdateOutput(idea.id, output.id, event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="output-delete"
+                    aria-label={`Delete output ${index + 1}`}
+                    title="Delete output"
+                    onClick={() => onDeleteOutput(idea.id, output.id)}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </aside>
+  );
+}
+
+function OutputsPage({
+  ideas,
+  selectedIdeaId,
+  onSelectIdea,
+  onAddOutput,
+  onUpdateOutput,
+  onDeleteOutput,
+}: {
+  ideas: Idea[];
+  selectedIdeaId: number | null;
+  onSelectIdea: (id: number | null) => void;
+  onAddOutput: (ideaId: number) => void;
+  onUpdateOutput: (ideaId: number, outputId: number, note: string) => void;
+  onDeleteOutput: (ideaId: number, outputId: number) => void;
+}) {
+  const outputIdeas = ideas.filter((idea) => outputCount(idea) > 0);
+  const visibleIdeas = selectedIdeaId === null
+    ? outputIdeas
+    : outputIdeas.filter((idea) => idea.id === selectedIdeaId);
+
+  return (
+    <section className="outputs-page" aria-label="Outputs">
+      <header className="outputs-page-header">
+        <div>
+          <p className="archive-kicker">OUTPUTS</p>
+          <h2>{selectedIdeaId === null ? "Outputs" : "Idea outputs"}</h2>
+          <p>Small results, drafts, decisions, and things this idea made possible.</p>
+        </div>
+        {selectedIdeaId !== null && (
+          <button type="button" className="outputs-show-all" onClick={() => onSelectIdea(null)}>
+            Show all outputs
+          </button>
+        )}
+      </header>
+      {visibleIdeas.length === 0 ? (
+        <div className="outputs-empty-page">
+          <span className="output-fruit output-fruit-large" aria-hidden="true">●</span>
+          <strong>No outputs yet</strong>
+          <span>Add an output from an idea detail panel.</span>
+        </div>
+      ) : (
+        <div className="outputs-page-list">
+          {visibleIdeas.map((idea) => (
+            <article className="outputs-group" key={idea.id}>
+              <button type="button" className="outputs-group-heading" onClick={() => onSelectIdea(idea.id)}>
+                <span className={`species-art outputs-species species-${idea.id % 10}`} aria-hidden="true" />
+                <span>
+                  <strong>{idea.title || "Untitled idea"}</strong>
+                  <small>{outputCount(idea)} output{outputCount(idea) === 1 ? "" : "s"}</small>
+                </span>
+                <ExternalLink size={15} aria-hidden="true" />
+              </button>
+              <div className="outputs-group-items">
+                {idea.outputs.map((output, index) => (
+                  <div className="output-page-item" key={output.id}>
+                    <span className="output-fruit" aria-hidden="true">●</span>
+                    <textarea
+                      value={output.note}
+                      placeholder={`Output ${index + 1}`}
+                      aria-label={`${idea.title || "Idea"} output ${index + 1}`}
+                      onChange={(event) => onUpdateOutput(idea.id, output.id, event.target.value)}
+                    />
+                    <button type="button" className="output-delete" aria-label="Delete output" title="Delete output" onClick={() => onDeleteOutput(idea.id, output.id)}>
+                      <Trash2 size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="outputs-add-inline" onClick={() => onAddOutput(idea.id)}>
+                  <Plus size={14} aria-hidden="true" /> Add output
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -703,7 +864,7 @@ export default function Home() {
   const accessDenied = false;
   const savingIds = new Set<number>();
   const saveFailedIds = new Set<number>();
-  const [view, setView] = useState<"incubator" | "garden" | "archive">("incubator");
+  const [view, setView] = useState<"incubator" | "garden" | "archive" | "outputs">("incubator");
   const [collectionOpen, setCollectionOpen] = useState(false);
   const [gardenDisplayMode, setGardenDisplayMode] = useState<"latest" | "custom">(
     "latest",
@@ -719,6 +880,7 @@ export default function Home() {
     new Set(),
   );
   const [filterEvergreen, setFilterEvergreen] = useState(false);
+  const [filterWithOutput, setFilterWithOutput] = useState(false);
   const [activeTool, setActiveTool] = useState<
     "search" | "filter" | "sort" | "trash" | null
   >(null);
@@ -735,6 +897,7 @@ export default function Home() {
   );
   const [trashError, setTrashError] = useState<string | null>(null);
   const [selectedIdeaId, setSelectedIdeaId] = useState<number | null>(null);
+  const [selectedOutputIdeaId, setSelectedOutputIdeaId] = useState<number | null>(null);
   const [creatingIdea, setCreatingIdea] = useState(false);
   const creatingIdeaRef = useRef(false);
   const movingToTrashIds = useRef<Set<number>>(new Set());
@@ -749,9 +912,13 @@ export default function Home() {
       if (raw) {
         const snapshot = JSON.parse(raw) as Partial<GardenSnapshot>;
         // This initializes browser-only persisted data after hydration.
+        const normalizeIdea = (idea: Idea): Idea => ({
+          ...idea,
+          outputs: Array.isArray(idea.outputs) ? idea.outputs : [],
+        });
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (Array.isArray(snapshot.ideas)) setIdeas(snapshot.ideas);
-        if (Array.isArray(snapshot.trashedIdeas)) setTrashedIdeas(snapshot.trashedIdeas);
+        if (Array.isArray(snapshot.ideas)) setIdeas(snapshot.ideas.map(normalizeIdea));
+        if (Array.isArray(snapshot.trashedIdeas)) setTrashedIdeas(snapshot.trashedIdeas.map(normalizeIdea));
       }
     } catch {
       window.localStorage.removeItem(localGardenStorageKey);
@@ -901,6 +1068,34 @@ export default function Home() {
     );
   };
 
+  const openOutputs = (ideaId: number) => {
+    setSelectedOutputIdeaId(ideaId);
+    setSelectedIdeaId(null);
+    setView("outputs");
+  };
+
+  const addOutput = (ideaId: number) => {
+    const now = new Date().toISOString();
+    const output: Output = { id: Date.now() + Math.floor(Math.random() * 1000), note: "", createdAt: now, updatedAt: now };
+    setIdeas((current) => current.map((idea) => idea.id === ideaId ? { ...idea, outputs: [...(idea.outputs ?? []), output], updatedAt: now } : idea));
+    setSelectedOutputIdeaId(ideaId);
+    setView("outputs");
+  };
+
+  const updateOutput = (ideaId: number, outputId: number, note: string) => {
+    const now = new Date().toISOString();
+    setIdeas((current) => current.map((idea) => idea.id === ideaId
+      ? { ...idea, outputs: (idea.outputs ?? []).map((output) => output.id === outputId ? { ...output, note, updatedAt: now } : output), updatedAt: now }
+      : idea));
+  };
+
+  const deleteOutput = (ideaId: number, outputId: number) => {
+    const now = new Date().toISOString();
+    setIdeas((current) => current.map((idea) => idea.id === ideaId
+      ? { ...idea, outputs: (idea.outputs ?? []).filter((output) => output.id !== outputId), updatedAt: now }
+      : idea));
+  };
+
   const createIdea = async () => {
     if (creatingIdeaRef.current) return;
     creatingIdeaRef.current = true;
@@ -920,6 +1115,7 @@ export default function Home() {
         sparkedAt: null,
         gardenSlot: null,
         deletedAt: null,
+        outputs: [],
         createdAt: now,
         updatedAt: now,
       };
@@ -1066,8 +1262,8 @@ export default function Home() {
       if (!window.confirm("Replace this browser's current garden with the imported file?")) {
         return;
       }
-      setIdeas(snapshot.ideas as Idea[]);
-      setTrashedIdeas(snapshot.trashedIdeas as Idea[]);
+      setIdeas((snapshot.ideas as Idea[]).map((idea) => ({ ...idea, outputs: Array.isArray(idea.outputs) ? idea.outputs : [] })));
+      setTrashedIdeas((snapshot.trashedIdeas as Idea[]).map((idea) => ({ ...idea, outputs: Array.isArray(idea.outputs) ? idea.outputs : [] })));
       setSelectedIdeaId(null);
       setActiveTool(null);
     } catch {
@@ -1088,7 +1284,7 @@ export default function Home() {
     ),
   ).sort((a, b) => a.localeCompare(b));
   const hasActiveFilters =
-    filterCategories.size > 0 || filterStatuses.size > 0 || filterEvergreen;
+    filterCategories.size > 0 || filterStatuses.size > 0 || filterEvergreen || filterWithOutput;
   const hasCustomSort = sortField !== "updated" || sortDirection !== "desc";
   const hasModifiedView = Boolean(query) || hasActiveFilters || hasCustomSort;
   const sortLabel = {
@@ -1098,11 +1294,12 @@ export default function Home() {
     status: "Status",
   }[sortField];
   const appliedFilterCount =
-    filterCategories.size + filterStatuses.size + (filterEvergreen ? 1 : 0);
+    filterCategories.size + filterStatuses.size + (filterEvergreen ? 1 : 0) + (filterWithOutput ? 1 : 0);
   const clearFilters = () => {
     setFilterCategories(new Set());
     setFilterStatuses(new Set());
     setFilterEvergreen(false);
+    setFilterWithOutput(false);
   };
   const resetView = () => {
     setQuery("");
@@ -1128,6 +1325,9 @@ export default function Home() {
         return false;
       }
       if (filterEvergreen && !idea.evergreen) {
+        return false;
+      }
+      if (filterWithOutput && outputCount(idea) === 0) {
         return false;
       }
       if (!normalizedQuery) return true;
@@ -1284,6 +1484,14 @@ export default function Home() {
             onClick={() => setView("garden")}
           >
             Garden
+          </button>
+          <button
+            type="button"
+            className={view === "outputs" ? "active" : ""}
+            aria-pressed={view === "outputs"}
+            onClick={() => { setView("outputs"); setSelectedOutputIdeaId(null); }}
+          >
+            Outputs
           </button>
         </nav>
         <div className="top-actions">
@@ -1519,6 +1727,14 @@ export default function Home() {
                           Evergreen
                         </span>
                       </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={filterWithOutput}
+                          onChange={(event) => setFilterWithOutput(event.target.checked)}
+                        />
+                        <span>With output</span>
+                      </label>
                     </div>
                   </fieldset>
                 </div>
@@ -1671,6 +1887,16 @@ export default function Home() {
                 Evergreen <X size={12} strokeWidth={1.8} aria-hidden="true" />
               </button>
             )}
+            {filterWithOutput && (
+              <button
+                type="button"
+                className="applied-chip"
+                onClick={() => setFilterWithOutput(false)}
+                aria-label="Remove With output filter"
+              >
+                With output <X size={12} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            )}
             {hasCustomSort && (
               <button
                 type="button"
@@ -1692,7 +1918,16 @@ export default function Home() {
             </button>
           </div>
         )}
-        {view === "archive" ? (
+        {view === "outputs" ? (
+          <OutputsPage
+            ideas={ideas.filter((idea) => idea.status !== "archived")}
+            selectedIdeaId={selectedOutputIdeaId}
+            onSelectIdea={setSelectedOutputIdeaId}
+            onAddOutput={addOutput}
+            onUpdateOutput={updateOutput}
+            onDeleteOutput={deleteOutput}
+          />
+        ) : view === "archive" ? (
           <section className="archive-page" aria-label="Archive">
             <div className="archive-header">
               <div>
@@ -1813,6 +2048,7 @@ export default function Home() {
                 onChange={updateIdea}
                 onTrash={moveToTrash}
                 onOpen={openIdea}
+                onOpenOutputs={openOutputs}
               />
             ))}
             {!query && !hasActiveFilters && (
@@ -2081,6 +2317,9 @@ export default function Home() {
             categoryOptions={categories}
           onClose={closeIdea}
           onChange={updateIdea}
+          onAddOutput={addOutput}
+          onUpdateOutput={updateOutput}
+          onDeleteOutput={deleteOutput}
         />
       )}
     </main>
