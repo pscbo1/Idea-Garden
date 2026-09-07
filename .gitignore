@@ -41,3 +41,7 @@ next-env.d.ts
 /.sites-runtime/
 /outputs/
 /work/
+
+# nested app build output
+idea-garden-github/node_modules/
+idea-garden-github/.next/

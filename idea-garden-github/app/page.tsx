@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 
 type IdeaStatus = "seed" | "sprout" | "bloom" | "spark" | "archived";
-type SortField = "updated" | "created" | "category" | "status";
+type SortField = "updated" | "created" | "category" | "status" | "outputs";
 type SortDirection = "asc" | "desc";
 
 type Output = {
@@ -122,6 +122,23 @@ function GrowthMark({ status }: { status: IdeaStatus }) {
 
 function outputCount(idea: Idea) {
   return Array.isArray(idea.outputs) ? idea.outputs.length : 0;
+}
+
+function nonEmptyOutputCount(idea: Idea) {
+  return Array.isArray(idea.outputs)
+    ? idea.outputs.filter(
+        (output) => typeof output.note === "string" && output.note.trim().length > 0,
+      ).length
+    : 0;
+}
+
+function formatOutputCreatedAt(createdAt: string) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "Creation time unavailable";
+  return `Created ${date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })}`;
 }
 
 function FruitMark({ count, onClick }: { count: number; onClick: () => void }) {
@@ -564,7 +581,15 @@ function IdeaDetail({
             <div className="output-list">
               {idea.outputs.map((output, index) => (
                 <div className="output-item" key={output.id}>
-                  <span className="output-fruit" aria-hidden="true">●</span>
+                  <span
+                    className="output-fruit"
+                    title={formatOutputCreatedAt(output.createdAt)}
+                    aria-label={`Output ${index + 1}, ${formatOutputCreatedAt(output.createdAt)}`}
+                    role="img"
+                    tabIndex={0}
+                  >
+                    ●
+                  </span>
                   <textarea
                     value={output.note}
                     placeholder={`Output ${index + 1}`}
@@ -645,7 +670,15 @@ function OutputsPage({
               <div className="outputs-group-items">
                 {idea.outputs.map((output, index) => (
                   <div className="output-page-item" key={output.id}>
-                    <span className="output-fruit" aria-hidden="true">●</span>
+                    <span
+                      className="output-fruit"
+                      title={formatOutputCreatedAt(output.createdAt)}
+                      aria-label={`${idea.title || "Idea"} output ${index + 1}, ${formatOutputCreatedAt(output.createdAt)}`}
+                      role="img"
+                      tabIndex={0}
+                    >
+                      ●
+                    </span>
                     <textarea
                       value={output.note}
                       placeholder={`Output ${index + 1}`}
@@ -860,8 +893,6 @@ export default function Home() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [trashedIdeas, setTrashedIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
-  const embedKey = "local";
-  const accessDenied = false;
   const savingIds = new Set<number>();
   const saveFailedIds = new Set<number>();
   const [view, setView] = useState<"incubator" | "garden" | "archive" | "outputs">("incubator");
@@ -914,7 +945,16 @@ export default function Home() {
         // This initializes browser-only persisted data after hydration.
         const normalizeIdea = (idea: Idea): Idea => ({
           ...idea,
-          outputs: Array.isArray(idea.outputs) ? idea.outputs : [],
+          outputs: Array.isArray(idea.outputs)
+            ? idea.outputs.map((output) => {
+                const createdAt = output.createdAt || output.updatedAt || idea.createdAt || new Date().toISOString();
+                return {
+                  ...output,
+                  createdAt,
+                  updatedAt: output.updatedAt || createdAt,
+                };
+              })
+            : [],
         });
         // eslint-disable-next-line react-hooks/set-state-in-effect
         if (Array.isArray(snapshot.ideas)) setIdeas(snapshot.ideas.map(normalizeIdea));
@@ -1262,8 +1302,21 @@ export default function Home() {
       if (!window.confirm("Replace this browser's current garden with the imported file?")) {
         return;
       }
-      setIdeas((snapshot.ideas as Idea[]).map((idea) => ({ ...idea, outputs: Array.isArray(idea.outputs) ? idea.outputs : [] })));
-      setTrashedIdeas((snapshot.trashedIdeas as Idea[]).map((idea) => ({ ...idea, outputs: Array.isArray(idea.outputs) ? idea.outputs : [] })));
+      const normalizeIdea = (idea: Idea): Idea => ({
+        ...idea,
+        outputs: Array.isArray(idea.outputs)
+          ? idea.outputs.map((output) => {
+              const createdAt = output.createdAt || output.updatedAt || idea.createdAt || new Date().toISOString();
+              return {
+                ...output,
+                createdAt,
+                updatedAt: output.updatedAt || createdAt,
+              };
+            })
+          : [],
+      });
+      setIdeas((snapshot.ideas as Idea[]).map(normalizeIdea));
+      setTrashedIdeas((snapshot.trashedIdeas as Idea[]).map(normalizeIdea));
       setSelectedIdeaId(null);
       setActiveTool(null);
     } catch {
@@ -1292,6 +1345,7 @@ export default function Home() {
     created: "Created",
     category: "Category",
     status: "Status",
+    outputs: "Outputs",
   }[sortField];
   const appliedFilterCount =
     filterCategories.size + filterStatuses.size + (filterEvergreen ? 1 : 0) + (filterWithOutput ? 1 : 0);
@@ -1344,6 +1398,8 @@ export default function Home() {
         );
       } else if (sortField === "status") {
         comparison = statusSortOrder[a.status] - statusSortOrder[b.status];
+      } else if (sortField === "outputs") {
+        comparison = nonEmptyOutputCount(a) - nonEmptyOutputCount(b);
       } else {
         const field = sortField === "created" ? "createdAt" : "updatedAt";
         comparison = Date.parse(a[field]) - Date.parse(b[field]);
@@ -1379,8 +1435,8 @@ export default function Home() {
       : automaticGardenPlants;
 
   useEffect(() => {
-    if (loading || !embedKey) return;
-    const storageKey = `idea-garden-display-mode:${embedKey}`;
+    if (loading) return;
+    const storageKey = "idea-garden-display-mode:local";
     const storedMode = window.localStorage.getItem(storageKey);
     // Preserve an existing curated garden when this preference is first introduced.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1391,7 +1447,7 @@ export default function Home() {
           ? "custom"
           : "latest",
     );
-  }, [embedKey, hasManualGarden, loading]);
+  }, [hasManualGarden, loading]);
 
   const changeGardenDisplayMode = (mode: "latest" | "custom") => {
     if (mode === gardenDisplayMode) return;
@@ -1401,9 +1457,7 @@ export default function Home() {
       );
     }
     setGardenDisplayMode(mode);
-    if (embedKey) {
-      window.localStorage.setItem(`idea-garden-display-mode:${embedKey}`, mode);
-    }
+    window.localStorage.setItem("idea-garden-display-mode:local", mode);
   };
   const gardenSparks = ideas
     .filter((idea) => idea.status === "spark")
@@ -1531,7 +1585,7 @@ export default function Home() {
               event.target.value = "";
             }}
           />
-          {view === "incubator" && embedKey && !accessDenied && (
+          {view === "incubator" && (
             <button
               type="button"
               className="new-button"
@@ -1580,7 +1634,7 @@ export default function Home() {
         className={`card-stream ${view === "garden" ? "garden-stream" : ""}`}
         aria-live="polite"
       >
-        {view === "incubator" && embedKey && !accessDenied && (
+        {view === "incubator" && (
           <div
             ref={toolsRef}
             className={`idea-tools ${activeTool ? "is-open" : ""}`}
@@ -1634,6 +1688,7 @@ export default function Home() {
                     <option value="created">Created</option>
                     <option value="category">Category</option>
                     <option value="status">Status</option>
+                    <option value="outputs">Outputs</option>
                   </select>
                 </label>
                 <button
@@ -1830,7 +1885,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {view === "incubator" && embedKey && !accessDenied && hasModifiedView && (
+        {view === "incubator" && hasModifiedView && (
           <div className="applied-controls" aria-label="Applied view controls">
             <span className="applied-controls-label">Showing</span>
             {query && (
@@ -1977,12 +2032,6 @@ export default function Home() {
               </div>
             )}
           </section>
-        ) : accessDenied || (!loading && embedKey === null) ? (
-          <div className="empty-state access-state">
-            <GrowthMark status="seed" />
-            <strong>Private Garden</strong>
-            <span>Open this page with its private Notion link.</span>
-          </div>
         ) : loading ? (
           <div className="empty-state">Loading…</div>
         ) : visibleIdeas.length === 0 &&

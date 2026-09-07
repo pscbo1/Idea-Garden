@@ -1813,6 +1813,7 @@ h1 {
 .output-page-item textarea:focus,
 .output-item textarea:focus { border-color: #bfd2c3; box-shadow: 0 0 0 3px rgba(205, 219, 209, 0.2); }
 .output-fruit { width: 16px; height: 16px; display: grid; place-items: center; flex: 0 0 auto; margin-top: 11px; border: 1px solid #b85e31; border-radius: 50%; color: #ffd37a; background: #e87936; font-size: 8px; line-height: 1; }
+.output-fruit:focus-visible { outline: 2px solid #b9cdbf; outline-offset: 2px; }
 .output-fruit-large { width: 26px; height: 26px; margin: 0; font-size: 12px; }
 .output-delete { width: 30px; height: 30px; display: grid; place-items: center; margin-top: 6px; padding: 0; border: 0; border-radius: 7px; color: #a0aaa1; background: transparent; }
 .output-delete:hover { color: #a45e51; background: #fff1ef; }

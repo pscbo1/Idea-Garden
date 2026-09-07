@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Idea Garden Test",
-  description: "Capture, develop, and grow ideas in this browser.",
+  title: "Idea Garden",
+  description: "A private, browser-local space for capturing and growing ideas.",
   manifest: "/manifest.webmanifest",
   other: {
     "codex-preview": "development",

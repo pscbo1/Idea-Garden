@@ -1,12 +1,11 @@
 {
-  "name": "idea-incubator",
+  "name": "idea-garden",
   "version": "0.1.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
-    "install:ci": "bash scripts/install-ci.sh",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -41,5 +40,5 @@
     "wrangler": "4.92.0"
   },
   "type": "module",
-  "displayName": "Idea 孵化区"
+  "displayName": "Idea Garden"
 }
